@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, PermissionType } from "@capacitor/camera";
+import { Camera } from "@capacitor/camera";
 import { Filesystem } from "@capacitor/filesystem";
 import MessageBubble from "@/components/MessageBubble";
 import VoiceRecorder from "@/components/VoiceRecorder";
@@ -100,7 +100,7 @@ const Chat = () => {
   };
 
   // -----------------------------
-  // Permission function
+  // Request storage/gallery permission
   // -----------------------------
   const requestGalleryPermission = async () => {
     try {
@@ -115,13 +115,10 @@ const Chat = () => {
         return false;
       }
 
-      // iOS gallery permission
+      // iOS Photos permission
       const cameraStatus = await Camera.checkPermissions();
-      if (
-        cameraStatus.photos === "prompt" ||
-        cameraStatus.photos === "prompt-with-rationale"
-      ) {
-        const result = await Camera.requestPermissions({ permissions: [PermissionType.Photos] });
+      if (cameraStatus.photos === "prompt" || cameraStatus.photos === "prompt-with-rationale") {
+        const result = await Camera.requestPermissions(); // Capacitor 7 automatically handles permissions
         if (result.photos !== "granted") return false;
       } else if (cameraStatus.photos === "denied") {
         toast({
@@ -307,7 +304,7 @@ const Chat = () => {
             </>
           )}
         </div>
-      </div>
+        </div>
     </div>
   );
 };

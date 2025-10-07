@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Camera } from "@capacitor/camera";
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
@@ -14,7 +15,28 @@ const VoiceRecorder = ({ onRecordingComplete, isRecording, setIsRecording }: Voi
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  const requestMicrophonePermission = async () => {
+    try {
+      // Request microphone access first
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      return true;
+    } catch (error) {
+      toast({
+        title: "Permission Required",
+        description: "Please allow access to microphone to record voice notes",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   const startRecording = async () => {
+    const hasPermission = await requestMicrophonePermission();
+    
+    if (!hasPermission) {
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);

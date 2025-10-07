@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send, Image as ImageIcon, Mic, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Camera } from "@capacitor/camera";
 import MessageBubble from "@/components/MessageBubble";
 import VoiceRecorder from "@/components/VoiceRecorder";
 
@@ -107,7 +108,39 @@ const Chat = () => {
     setNewMessage("");
   };
 
+  const requestMediaPermission = async () => {
+    try {
+      const permission = await Camera.checkPermissions();
+      
+      if (permission.photos === 'prompt' || permission.photos === 'prompt-with-rationale') {
+        const result = await Camera.requestPermissions({ permissions: ['photos'] });
+        return result.photos === 'granted';
+      }
+      
+      if (permission.photos === 'denied') {
+        toast({
+          title: "Permission Required",
+          description: "Please allow access to photos in your device settings",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return permission.photos === 'granted';
+    } catch (error) {
+      console.error('Permission error:', error);
+      return false;
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const hasPermission = await requestMediaPermission();
+    
+    if (!hasPermission) {
+      e.target.value = '';
+      return;
+    }
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -145,6 +178,8 @@ const Chat = () => {
         variant: "destructive",
       });
     }
+    
+    e.target.value = '';
   };
 
   const handleVoiceNote = async (audioBlob: Blob) => {

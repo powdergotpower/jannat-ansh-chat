@@ -29,10 +29,10 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const otherUser = user === "ansh" ? "jannat" : "ansh";
+  const otherUser = user === "ansh" ? "ayushi" : "ansh";
 
   useEffect(() => {
-    if (!user || (user !== "ansh" && user !== "jannat")) {
+    if (!user || (user !== "ansh" && user !== "ayushi")) {
       navigate("/");
       return;
     }
@@ -104,22 +104,17 @@ const Chat = () => {
   // -----------------------------
   const requestGalleryPermission = async () => {
     try {
-      // Android storage permission
-      const storageStatus = await Filesystem.requestPermissions();
-      if (!(storageStatus.publicStorage === "granted" || storageStatus.storage === "granted")) {
-        toast({
-          title: "Permission Required",
-          description: "Please allow storage access to pick images.",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // iOS Photos permission
       const cameraStatus = await Camera.checkPermissions();
       if (cameraStatus.photos === "prompt" || cameraStatus.photos === "prompt-with-rationale") {
-        const result = await Camera.requestPermissions(); // Capacitor 7 automatically handles permissions
-        if (result.photos !== "granted") return false;
+        const result = await Camera.requestPermissions();
+        if (result.photos !== "granted") {
+          toast({
+            title: "Permission Required",
+            description: "Please allow access to Photos to send images.",
+            variant: "destructive",
+          });
+          return false;
+        }
       } else if (cameraStatus.photos === "denied") {
         toast({
           title: "Permission Required",

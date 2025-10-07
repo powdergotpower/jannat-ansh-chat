@@ -11,7 +11,7 @@ const Index = () => {
         <div className="space-y-4">
           <Heart className="h-16 w-16 mx-auto text-accent animate-pulse" />
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[hsl(var(--ansh-bubble))] to-[hsl(var(--jannat-bubble))] bg-clip-text text-transparent">
-            Ansh & Jannat
+            Ansh & Ayushi
           </h1>
           <p className="text-muted-foreground text-lg">Choose your profile to start chatting</p>
         </div>
@@ -26,11 +26,11 @@ const Index = () => {
           </Button>
 
           <Button
-            onClick={() => navigate("/chat/jannat")}
+            onClick={() => navigate("/chat/ayushi")}
             size="lg"
             className="w-full sm:w-auto text-lg px-8 py-6 rounded-full bg-gradient-to-r from-[hsl(var(--jannat-bubble))] to-[hsl(var(--jannat-bubble))]/90 hover:opacity-90 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
           >
-            Jannat
+            Ayushi
           </Button>
         </div>
       </div>

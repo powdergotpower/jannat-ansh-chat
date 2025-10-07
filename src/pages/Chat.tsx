@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Image as ImageIcon, Mic, Square } from "lucide-react";
+import { ArrowLeft, Send, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Camera } from "@capacitor/camera";
+import { Camera, PermissionType } from "@capacitor/camera";
+import { Filesystem } from "@capacitor/filesystem";
 import MessageBubble from "@/components/MessageBubble";
 import VoiceRecorder from "@/components/VoiceRecorder";
 
@@ -35,7 +36,6 @@ const Chat = () => {
       navigate("/");
       return;
     }
-
     fetchMessages();
     subscribeToMessages();
   }, [user]);
@@ -53,7 +53,6 @@ const Chat = () => {
       .from("messages")
       .select("*")
       .order("created_at", { ascending: true });
-
     if (error) {
       toast({
         title: "Error",
@@ -62,7 +61,6 @@ const Chat = () => {
       });
       return;
     }
-
     setMessages((data || []) as Message[]);
   };
 
@@ -71,11 +69,7 @@ const Chat = () => {
       .channel("messages")
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
+        { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           setMessages((current) => [...current, payload.new as Message]);
         }
@@ -89,13 +83,11 @@ const Chat = () => {
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
-
     const { error } = await supabase.from("messages").insert({
       sender: user,
       content: newMessage,
       message_type: "text",
     });
-
     if (error) {
       toast({
         title: "Error",
@@ -104,40 +96,61 @@ const Chat = () => {
       });
       return;
     }
-
     setNewMessage("");
   };
 
-  const requestMediaPermission = async () => {
+  // -----------------------------
+  // Permission function
+  // -----------------------------
+  const requestGalleryPermission = async () => {
     try {
-      const permission = await Camera.checkPermissions();
-      
-      if (permission.photos === 'prompt' || permission.photos === 'prompt-with-rationale') {
-        const result = await Camera.requestPermissions({ permissions: ['photos'] });
-        return result.photos === 'granted';
-      }
-      
-      if (permission.photos === 'denied') {
+      // Android storage permission
+      const storageStatus = await Filesystem.requestPermissions();
+      if (!(storageStatus.publicStorage === "granted" || storageStatus.storage === "granted")) {
         toast({
           title: "Permission Required",
-          description: "Please allow access to photos in your device settings",
+          description: "Please allow storage access to pick images.",
           variant: "destructive",
         });
         return false;
       }
-      
-      return permission.photos === 'granted';
-    } catch (error) {
-      console.error('Permission error:', error);
+
+      // iOS gallery permission
+      const cameraStatus = await Camera.checkPermissions();
+      if (
+        cameraStatus.photos === "prompt" ||
+        cameraStatus.photos === "prompt-with-rationale"
+      ) {
+        const result = await Camera.requestPermissions({ permissions: [PermissionType.Photos] });
+        if (result.photos !== "granted") return false;
+      } else if (cameraStatus.photos === "denied") {
+        toast({
+          title: "Permission Required",
+          description: "Please allow access to Photos in your device settings.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Permission error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to request permissions.",
+        variant: "destructive",
+      });
       return false;
     }
   };
 
+  // -----------------------------
+  // Image upload handler
+  // -----------------------------
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hasPermission = await requestMediaPermission();
-    
+    const hasPermission = await requestGalleryPermission();
     if (!hasPermission) {
-      e.target.value = '';
+      e.target.value = "";
       return;
     }
 
@@ -178,10 +191,13 @@ const Chat = () => {
         variant: "destructive",
       });
     }
-    
-    e.target.value = '';
+
+    e.target.value = "";
   };
 
+  // -----------------------------
+  // Voice note handler
+  // -----------------------------
   const handleVoiceNote = async (audioBlob: Blob) => {
     const fileName = `${Math.random()}.webm`;
     const filePath = `${fileName}`;
@@ -218,6 +234,9 @@ const Chat = () => {
     }
   };
 
+  // -----------------------------
+  // JSX
+  // -----------------------------
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       {/* Header */}
@@ -262,7 +281,7 @@ const Chat = () => {
           >
             <ImageIcon className="h-5 w-5" />
           </Button>
-          
+
           <VoiceRecorder
             onRecordingComplete={handleVoiceNote}
             isRecording={isRecording}

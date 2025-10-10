@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 
 type Message = {
   id: string;
-  sender: "ansh" | "jannat";
+  user_id: string;
+  space_id: string;
   content: string | null;
   message_type: "text" | "image" | "voice";
   file_url: string | null;
@@ -17,7 +18,7 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble = ({ message, currentUser }: MessageBubbleProps) => {
-  const isOwn = message.sender === currentUser;
+  const isOwn = message.user_id === currentUser;
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 

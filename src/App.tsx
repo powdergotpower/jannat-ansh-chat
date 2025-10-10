@@ -3,7 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
+import SpaceSelection from "./pages/SpaceSelection";
 import Chat from "./pages/Chat";
 import Lock from "./pages/Lock";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -19,8 +21,11 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/lock" element={<Lock />} />
-          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-          <Route path="/chat/:user" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/auth" element={<ProtectedRoute><Auth /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/space-selection" element={<ProtectedRoute><SpaceSelection /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute><Auth /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

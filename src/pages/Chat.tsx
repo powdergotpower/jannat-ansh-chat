@@ -12,7 +12,8 @@ import VoiceRecorder from "@/components/VoiceRecorder";
 
 type Message = {
   id: string;
-  sender: "ansh" | "jannat";
+  user_id: string;
+  space_id: string;
   content: string | null;
   message_type: "text" | "image" | "voice";
   file_url: string | null;
@@ -20,25 +21,46 @@ type Message = {
 };
 
 const Chat = () => {
-  const { user } = useParams<{ user: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [spaceId, setSpaceId] = useState<string>("");
+  const [spaceName, setSpaceName] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const otherUser = user === "ansh" ? "ayushi" : "ansh";
-
   useEffect(() => {
-    if (!user || (user !== "ansh" && user !== "ayushi")) {
-      navigate("/");
+    checkAuthAndSpace();
+  }, []);
+
+  const checkAuthAndSpace = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
       return;
     }
-    fetchMessages();
-    subscribeToMessages();
-  }, [user]);
+
+    setCurrentUserId(user.id);
+
+    const { data: membership } = await supabase
+      .from("space_members")
+      .select("space_id, spaces(name)")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      navigate("/space-selection");
+      return;
+    }
+
+    setSpaceId(membership.space_id);
+    setSpaceName((membership.spaces as any)?.name || "Chat");
+    fetchMessages(membership.space_id);
+    subscribeToMessages(membership.space_id);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -48,10 +70,11 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (spaceId: string) => {
     const { data, error } = await supabase
       .from("messages")
       .select("*")
+      .eq("space_id", spaceId)
       .order("created_at", { ascending: true });
     if (error) {
       toast({
@@ -64,12 +87,17 @@ const Chat = () => {
     setMessages((data || []) as Message[]);
   };
 
-  const subscribeToMessages = () => {
+  const subscribeToMessages = (spaceId: string) => {
     const channel = supabase
-      .channel("messages")
+      .channel(`messages-${spaceId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
+        { 
+          event: "INSERT", 
+          schema: "public", 
+          table: "messages",
+          filter: `space_id=eq.${spaceId}`
+        },
         (payload) => {
           setMessages((current) => [...current, payload.new as Message]);
         }
@@ -82,9 +110,10 @@ const Chat = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !spaceId) return;
     const { error } = await supabase.from("messages").insert({
-      sender: user,
+      space_id: spaceId,
+      user_id: currentUserId,
       content: newMessage,
       message_type: "text",
     });
@@ -166,15 +195,16 @@ const Chat = () => {
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from("chat-images")
-      .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage
+        .from("chat-images")
+        .getPublicUrl(filePath);
 
-    const { error: insertError } = await supabase.from("messages").insert({
-      sender: user,
-      message_type: "image",
-      file_url: publicUrl,
-    });
+      const { error: insertError } = await supabase.from("messages").insert({
+        space_id: spaceId,
+        user_id: currentUserId,
+        message_type: "image",
+        file_url: publicUrl,
+      });
 
     if (insertError) {
       toast({
@@ -212,7 +242,8 @@ const Chat = () => {
       .getPublicUrl(filePath);
 
     const { error: insertError } = await supabase.from("messages").insert({
-      sender: user,
+      space_id: spaceId,
+      user_id: currentUserId,
       message_type: "voice",
       file_url: publicUrl,
     });
@@ -242,7 +273,7 @@ const Chat = () => {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h2 className="text-lg font-semibold capitalize">{otherUser}</h2>
+          <h2 className="text-lg font-semibold">{spaceName}</h2>
           <p className="text-xs text-muted-foreground">Online</p>
         </div>
       </div>
@@ -250,7 +281,7 @@ const Chat = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} currentUser={user!} />
+          <MessageBubble key={message.id} message={message} currentUser={currentUserId} />
         ))}
         <div ref={messagesEndRef} />
       </div>
